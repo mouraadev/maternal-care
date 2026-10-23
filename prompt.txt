@@ -1,0 +1,147 @@
+# Projeto Doul.IA — Estrutura inicial do repositório
+
+Você é um engenheiro de software sênior. Crie a estrutura completa de um repositório para o **Doul.IA**, uma plataforma de acompanhamento gestacional com inteligência artificial, desenvolvida para um hackathon da OpenAI.
+
+O objetivo é deixar toda a arquitetura, pastas, configurações, dependências e integrações iniciais preparadas para que dois desenvolvedores trabalhem em paralelo.
+
+## 1. Stack
+
+- **Frontend:** React, Vite, TypeScript e Tailwind CSS.
+- **Componentes:** Lucide React e Recharts.
+- **Banco de dados:** Firebase Cloud Firestore.
+- **Autenticação:** Firebase Authentication.
+- **Backend:** Firebase Cloud Functions com TypeScript.
+- **IA:** API da OpenAI, integrada pelas Cloud Functions.
+- **Versionamento:** Git e GitHub.
+
+Priorize uma arquitetura simples, modular e rápida de desenvolver.
+
+## 2. Funcionalidades
+
+O sistema terá três perfis com autenticação e redirecionamento automático.
+
+**Administrador**
+- Cadastro e gerenciamento de médicos e pacientes.
+- Vinculação de pacientes aos médicos.
+- Dashboard geral de médicos, pacientes e atendimentos.
+
+**Médico**
+- Dashboard de pacientes vinculados.
+- Visualização e edição de dados de acompanhamento.
+- Fila de solicitações de atendimento.
+- Atualização do status dos atendimentos.
+
+**Paciente**
+- Dashboard humanizado com informações da gestação.
+- Linha do tempo e previsão das etapas gestacionais.
+- Histórico de consultas e atendimentos.
+- Chat com assistente virtual personalizada, chamada Lia.
+- Solicitação de atendimento médico.
+
+**IA**
+- Acompanhamento educativo e personalizado conforme a fase gestacional.
+- Conversas acolhedoras e contextualizadas.
+- Sem diagnósticos, prescrições ou substituição de orientação médica.
+- Integração segura, sem expor chaves da OpenAI no frontend.
+
+## 3. Estrutura do repositório
+
+Crie uma estrutura semelhante a:
+
+```text
+doul-ia/
+├── src/
+│   ├── assets/
+│   ├── components/
+│   │   ├── ui/
+│   │   ├── layouts/
+│   │   └── charts/
+│   ├── pages/
+│   │   ├── auth/
+│   │   ├── admin/
+│   │   ├── doctor/
+│   │   └── patient/
+│   ├── features/
+│   │   ├── auth/
+│   │   ├── appointments/
+│   │   ├── pregnancy/
+│   │   └── ai-assistant/
+│   ├── services/
+│   │   ├── firebase/
+│   │   └── api/
+│   ├── hooks/
+│   ├── contexts/
+│   ├── routes/
+│   ├── types/
+│   ├── utils/
+│   └── App.tsx
+├── functions/
+│   └── src/
+│       ├── controllers/
+│       ├── services/
+│       ├── middlewares/
+│       └── index.ts
+├── docs/
+│   ├── ARCHITECTURE.md
+│   ├── FIREBASE.md
+│   ├── RESPONSIBILITIES.md
+│   └── API.md
+├── .env.example
+├── .gitignore
+├── firebase.json
+├── firestore.rules
+├── firestore.indexes.json
+├── package.json
+└── README.md
+```
+
+## 4. Divisão de responsabilidades
+
+**Ryan — Frontend e APIs**
+- Interfaces dos três perfis.
+- Componentes, dashboards e gráficos.
+- Navegação e integração com Firebase Authentication.
+- Consumo dos serviços do Firestore e Cloud Functions.
+- Interface do chat com IA.
+
+**Felipe — Banco de dados e backend**
+- Configuração do Firebase.
+- Modelagem das coleções Firestore.
+- Regras de segurança e permissões.
+- Cloud Functions e lógica de negócio.
+- Integração segura com a OpenAI.
+- Estrutura de dados e vínculos entre médicos e pacientes.
+
+Documente essa divisão em `RESPONSIBILITIES.md`.
+
+## 5. Requisitos de implementação
+
+1. Crie efetivamente todos os diretórios e arquivos necessários, não apenas uma representação da estrutura.
+2. Configure as dependências e scripts para desenvolvimento, build e testes.
+3. Prepare Firebase Authentication com os perfis `admin`, `doctor` e `patient`, usando regras seguras de autorização.
+4. Estruture as coleções Firestore, os serviços de acesso e as regras de segurança, impedindo acesso indevido a dados de outras pacientes.
+5. Crie as rotas e layouts iniciais das três interfaces.
+6. Configure a comunicação com Cloud Functions e a estrutura do assistente de IA.
+7. Utilize Firebase Emulator Suite para desenvolvimento local quando aplicável.
+8. Crie dados fictícios de demonstração, sem informações médicas reais.
+9. Documente o propósito de cada pasta, a configuração das variáveis de ambiente e como executar o projeto.
+10. Garanta que os dois desenvolvedores possam trabalhar independentemente, com interfaces e contratos de dados bem definidos.
+
+## 6. Entrega esperada
+
+Ao finalizar, quero:
+
+- Repositório estruturado e organizado.
+- Projeto React executável.
+- Firebase configurado para receber credenciais.
+- Autenticação e rotas protegidas preparadas.
+- Cloud Functions estruturadas.
+- Interfaces iniciais dos três perfis.
+- Documentação das pastas e responsabilidades.
+- README com comandos de instalação e execução.
+
+**Importante:** não invente credenciais nem considere serviços externos configurados sem validação. Identifique o que depende de configuração manual no Firebase Console.
+
+Execute instalação, verificações de TypeScript e build quando possível, corrigindo os erros encontrados.
+
+Não implemente funcionalidades complexas desnecessárias. O foco é entregar uma **base funcional, limpa e pronta para Ryan e Felipe começarem a desenvolver e commitar suas respectivas partes**.

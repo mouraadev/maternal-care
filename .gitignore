@@ -1,0 +1,16 @@
+node_modules/
+dist/
+functions/lib/
+coverage/
+.firebase/
+*-debug.log*
+*.log
+.env
+.env.*
+!.env.example
+**/.secret.local
+**/service-account*.json
+**/serviceAccount*.json
+.DS_Store
+Thumbs.db
+.idea/
