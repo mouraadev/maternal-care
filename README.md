@@ -1,4 +1,4 @@
-# Doul.IA
+# Matercal care
 
 Plataforma de acompanhamento gestacional com inteligência artificial para um hackathon da OpenAI.
 
