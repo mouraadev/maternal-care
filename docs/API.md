@@ -2,6 +2,8 @@
 
 Proposta para Cloud Functions callable. Nenhum endpoint está implementado. O SDK Firebase envia a sessão; todas as Functions devem verificar usuário ativo e perfil no servidor. IDs e datas retornados ao frontend serão strings; instantes em ISO 8601.
 
+O frontend importado do MVP ainda utiliza dados locais e um cliente HTTP para Lia. Os contratos abaixo representam o backend planejado; as diferenças e o trabalho necessário para integração estão em [INTEGRATION.md](INTEGRATION.md).
+
 | Function prevista | Perfil | Entrada | Saída |
 | --- | --- | --- | --- |
 | `createUser` | Admin | `displayName`, `email`, `role: doctor ou patient` | `uid` |

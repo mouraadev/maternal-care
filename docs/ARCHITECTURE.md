@@ -2,7 +2,9 @@
 
 ## Escopo desta entrega
 
-Somente estrutura de diretórios, documentação e exemplos de ambiente. Não há código de aplicação, manifests de dependências, regras implantáveis, workflows ou serviços configurados. Scripts de desenvolvimento, build e testes serão adicionados na implementação.
+O esqueleto inicial recebeu o frontend de demonstração do arquivo `maternal-care-mvp.zip`. Há páginas de médico e paciente, componentes, dados fictícios, armazenamento local e configuração Vite/TypeScript. Não há login implementado, backend, regras implantáveis ou serviços provisionados. A pasta `src/pages/auth` permanece reservada ao Felipe. Scripts disponíveis: `dev`, `build`, `preview` e `typecheck`; lint e testes automatizados ainda precisam ser configurados.
+
+O MVP utiliza CSS próprio em `src/styles/global.css`; Tailwind continua como intenção da arquitetura original, sem configuração nesta versão. Os componentes importados ficam em `src/components/UI.tsx` e `src/components/Layout.tsx`. As pastas modulares do esqueleto permanecem disponíveis para evolução sem reorganização prematura.
 
 ## Fluxo planejado
 

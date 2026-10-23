@@ -1,0 +1,6 @@
+export type AppointmentStatus = 'Pendente' | 'Em andamento' | 'Concluído';
+export type RequestStatus = AppointmentStatus;
+export type Patient = {id:string; name:string; initials:string; week:number; dueDate:string; lastVisit:string; nextVisit:string; notes:string; doctorId:string; color:string};
+export type CareRequest = {id:string; patientId:string; title:string; description:string; date:string; status:RequestStatus; priority:'Normal'|'Alta'};
+export type Appointment = {id:string; patientId:string; date:string; time:string; type:string; status:AppointmentStatus};
+export type ChatMessage = {id:string; role:'user'|'assistant'; content:string; time:string};
