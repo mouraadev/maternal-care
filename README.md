@@ -6,6 +6,8 @@ O repositório reúne a arquitetura inicial do Doul.IA e o frontend de demonstra
 
 ## Executar o frontend
 
+Atualização: a configuração Firebase compartilhada está integrada. Veja [ativação e contas de teste](docs/SHARED_FIREBASE.md). A Lia agora tem uma [demonstração de voz e integração WebRTC](docs/VOICE.md), disponível em `/patient/assistant`.
+
 Requer Node.js 22.12+ ou 24 e npm.
 
 ```bash

@@ -16,5 +16,5 @@ export const appointments:Appointment[] = [
  {id:'a3',patientId:'p2',date:'2026-11-04',time:'10:15',type:'Consulta de pré-natal',status:'Pendente'},
  {id:'a4',patientId:'p4',date:'2026-11-06',time:'11:00',type:'Consulta de rotina',status:'Pendente'}
 ];
-export const formatDate=(d:string)=> new Date(`${d}T12:00:00`).toLocaleDateString('pt-BR');
+export const formatDate=(d:string)=> d ? new Date(`${d}T12:00:00`).toLocaleDateString('pt-BR') : 'Não informado';
 export const firstName=(n:string)=>n.split(' ')[0];

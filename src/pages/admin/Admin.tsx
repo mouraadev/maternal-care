@@ -32,30 +32,34 @@ export default function Admin({section}:{section:Section}) {
   const [editor,setEditor] = useState<string|null>(null);
   const [notice,setNotice] = useState('');
   const [error,setError] = useState('');
+  const [saving,setSaving] = useState(false);
   const patientName = (id:string) => data.patients.find(p => p.id===id)?.name ?? 'Paciente removida';
   const doctorName = (id?:string) => data.doctors.find(d => d.id===id)?.name ?? 'Sem responsável';
   const openPatient = (id:string) => { demoStore.selectPatient(id); navigate('/patient/dashboard'); };
   const openDoctor = (id:string) => { demoStore.selectDoctor(id); navigate('/doctor/dashboard'); };
-  function action(operation:() => void, message='Alterações salvas neste navegador.') {
+  async function action(operation:() => void|Promise<void>, message=data.source==='firebase'?'Alterações salvas no Firebase.':'Alterações salvas neste navegador.') {
     setError(''); setNotice('');
-    try { operation(); setNotice(message); return true; }
+    try { await operation(); setNotice(message); return true; }
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Não foi possível salvar.'); return false; }
   }
-  function remove(operation:() => void, message:string) {
-    if (window.confirm(message)) action(operation,'Registro excluído da demonstração.');
+  function remove(operation:() => void|Promise<void>, message:string) {
+    if (window.confirm(message)) void action(operation,'Registro excluído.');
   }
-  function submit(event:FormEvent<HTMLFormElement>) {
+  async function submit(event:FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const get = (name:string) => String(form.get(name)??'').trim();
-    const id = editor==='new' ? createDemoId() : editor!;
-    const success = action(() => {
-      if (section==='doctors') demoStore.saveDoctor({id,name:get('name'),email:get('email'),specialty:get('specialty'),registration:get('registration')});
-      if (section==='patients') demoStore.savePatient({id,name:get('name'),initials:get('name').split(/\s+/).slice(0,2).map(n => n[0]).join('').toUpperCase(),doctorId:get('doctorId'),week:Number(get('week')),dueDate:get('dueDate'),lastVisit:get('lastVisit'),nextVisit:get('nextVisit'),notes:get('notes'),color:'pink'});
-      if (section==='requests') demoStore.saveRequest({id,patientId:get('patientId'),doctorId:get('doctorId'),title:get('title'),description:get('description'),date:get('date'),priority:get('priority') as 'Normal'|'Alta',status:get('status') as RequestStatus});
-      if (section==='appointments') demoStore.saveAppointment({id,patientId:get('patientId'),doctorId:get('doctorId'),date:get('date'),time:get('time'),type:get('type'),status:get('status') as RequestStatus});
+    if(saving)return;
+    setSaving(true);
+    const id = editor==='new' ? (get('accountUid')||createDemoId()) : editor!;
+    const success = await action(() => {
+      if (section==='doctors') return demoStore.saveDoctor({id,name:get('name'),email:get('email'),specialty:get('specialty'),registration:get('registration')});
+      if (section==='patients') return demoStore.savePatient({id,name:get('name'),initials:get('name').split(/\s+/).slice(0,2).map(n => n[0]).join('').toUpperCase(),doctorId:get('doctorId'),week:Number(get('week')),dueDate:get('dueDate'),lastVisit:get('lastVisit'),nextVisit:get('nextVisit'),notes:get('notes'),color:'pink'});
+      if (section==='requests') return demoStore.saveRequest({id,patientId:get('patientId'),doctorId:get('doctorId'),title:get('title'),description:get('description'),date:get('date'),priority:get('priority') as 'Normal'|'Alta',status:get('status') as RequestStatus});
+      if (section==='appointments') return demoStore.saveAppointment({id,patientId:get('patientId'),doctorId:get('doctorId'),date:get('date'),time:get('time'),type:get('type'),status:get('status') as RequestStatus});
     });
     if (success) setEditor(null);
+    setSaving(false);
   }
   const patient = data.patients.find(p => p.id===editor);
   const doctor = data.doctors.find(d => d.id===editor);
@@ -73,16 +77,17 @@ export default function Admin({section}:{section:Section}) {
 
   return <>
     <div className="admin-heading"><div className="page-head"><span className="eyebrow">CENTRAL ADMINISTRATIVA</span><h1>{titles[section]}</h1><p>{descriptions[section]}</p></div>{section!=='dashboard' && <button className="primary-btn" onClick={() => {setEditor('new');setError('');setNotice('');}}><Plus size={17}/>{section==='patients'?'Nova paciente':section==='doctors'?'Novo médico':section==='requests'?'Novo atendimento':'Nova consulta'}</button>}</div>
-    <div className="admin-demo-note"><ShieldCheck size={17}/><span>Ambiente de demonstração · Cadastros e alterações ficam neste navegador. O cadastro não cria contas de acesso no Firebase.</span></div>
+    <div className="admin-demo-note"><ShieldCheck size={17}/><span>{data.source==='firebase'?'Dados compartilhados no Firebase · Cadastre a conta no Authentication e informe seu UID. Alterar ou excluir um cadastro aqui não altera as credenciais de acesso.':'Ambiente de demonstração · Cadastros e alterações ficam neste navegador. O cadastro não cria contas de acesso no Firebase.'}</span></div>
     {notice && <p className="admin-notice" role="status">{notice}</p>}{error && <p className="admin-error" role="alert">{error}</p>}
 
-    {editor && <section className="panel admin-editor"><SectionTitle title={editor==='new'?'Novo cadastro':'Editar cadastro'} subtitle="Preencha as informações e salve para atualizar todas as interfaces."/><form key={editor} onSubmit={submit}><div className="admin-form-grid">
-      {section==='doctors' && <><Field name="name" label="Nome completo" value={doctor?.name}/><Field name="email" label="E-mail" type="email" value={doctor?.email}/><Field name="specialty" label="Especialidade" value={doctor?.specialty}/><Field name="registration" label="Registro profissional (demonstração)" value={doctor?.registration}/></>}
+    {editor && <section className="panel admin-editor"><SectionTitle title={editor==='new'?'Novo cadastro':'Editar cadastro'} subtitle="Preencha as informações e salve para atualizar todas as interfaces."/><form key={editor} onSubmit={event=>void submit(event)}><div className="admin-form-grid">
+      {data.source==='firebase'&&editor==='new'&&(section==='doctors'||section==='patients')&&<Field name="accountUid" label="UID da conta já criada no Firebase Authentication"/>}
+      {section==='doctors' && <><Field name="name" label="Nome completo" value={doctor?.name}/><Field name="email" label="E-mail" type="email" value={doctor?.email}/><Field name="specialty" label="Especialidade" value={doctor?.specialty}/><Field name="registration" label="Registro profissional" value={doctor?.registration}/></>}
       {section==='patients' && <><Field name="name" label="Nome completo" value={patient?.name}/><Field name="doctorId" label="Médico de acompanhamento" value={patient?.doctorId} required={false}>{doctorOptions}</Field><Field name="week" label="Semana gestacional" type="number" value={patient?.week??0} min={0} max={45}/><Field name="dueDate" label="Previsão de parto" type="date" value={patient?.dueDate}/><Field name="lastVisit" label="Última consulta" type="date" value={patient?.lastVisit}/><Field name="nextVisit" label="Próximo acompanhamento" type="date" value={patient?.nextVisit}/><Field name="notes" label="Notas de acompanhamento" type="textarea" value={patient?.notes} required={false}/></>}
       {(section==='requests'||section==='appointments') && <><Field name="patientId" label="Paciente" value={request?.patientId??appointment?.patientId??''}>{patientOptions}</Field><Field name="doctorId" label="Médico deste atendimento" value={request?.doctorId??appointment?.doctorId??''} required={false}>{doctorOptions}</Field><Field name="date" label="Data" type="date" value={request?.date??appointment?.date??new Date().toISOString().slice(0,10)}/><Field name="status" label="Status" value={request?.status??appointment?.status??'Pendente'}>{statusOptions}</Field></>}
       {section==='requests' && <><Field name="title" label="Assunto" value={request?.title}/><Field name="priority" label="Prioridade" value={request?.priority??'Normal'}><option>Normal</option><option>Alta</option></Field><Field name="description" label="Descrição" type="textarea" value={request?.description}/></>}
       {section==='appointments' && <><Field name="type" label="Tipo da consulta" value={appointment?.type}/><Field name="time" label="Horário" type="time" value={appointment?.time}/></>}
-    </div><div className="admin-actions"><button type="submit" className="primary-btn">Salvar alterações</button><button type="button" className="admin-button" onClick={() => setEditor(null)}>Cancelar</button></div></form></section>}
+    </div><div className="admin-actions"><button type="submit" className="primary-btn" disabled={saving}>{saving?'Salvando…':'Salvar alterações'}</button><button type="button" className="admin-button" onClick={() => setEditor(null)}>Cancelar</button></div></form></section>}
 
     {section==='dashboard' ? <>
       <div className="stats-grid"><StatCard label="Pacientes cadastradas" value={data.patients.length} detail={`${data.patients.filter(p => !p.doctorId).length} sem médico vinculado`} icon={<Users size={20}/>}/><StatCard label="Profissionais" value={data.doctors.length} detail="Equipe disponível na demonstração" icon={<Stethoscope size={20}/>}/><StatCard label="Atendimentos em aberto" value={data.requests.length-completed} detail={`${metrics[0].total} pendentes · ${metrics[1].total} em andamento`} icon={<Clock size={20}/>}/><StatCard label="Taxa de conclusão" value={`${rate}%`} detail={`${completed} de ${data.requests.length} atendimentos concluídos`} icon={<CheckCircle2 size={20}/>}/></div>

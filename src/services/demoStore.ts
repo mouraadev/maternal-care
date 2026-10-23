@@ -3,7 +3,7 @@ import {initialRequests, patients, appointments} from '../data/seed';
 import type {Appointment, CareRequest, Doctor, Patient, RequestStatus} from '../types';
 import {createDemoId} from '../utils/id';
 
-export type DemoData = {requests:CareRequest[];patients:Patient[];doctors:Doctor[];appointments:Appointment[];selectedPatientId:string;selectedDoctorId:string};
+export type DemoData = {requests:CareRequest[];patients:Patient[];doctors:Doctor[];appointments:Appointment[];selectedPatientId:string;selectedDoctorId:string;source?:'demo'|'firebase';loading?:boolean;error?:string;sessionUid?:string;sessionRole?:'admin'|'doctor'|'patient'};
 const key = 'maternal-care-demo-v1';
 function defaults(): DemoData {
   return structuredClone({requests:initialRequests.map(r => ({...r,doctorId:'d1'})),patients,
@@ -30,8 +30,10 @@ function read(): DemoData {
   return initial;
 }
 let state = read();
+let remoteWriter:((previous:DemoData,next:DemoData)=>Promise<void>)|null = null;
 const subscribers = new Set<() => void>();
 function save(next:DemoData) {
+  if(remoteWriter) return remoteWriter(state,next);
   state = next;
   try { localStorage.setItem(key,JSON.stringify(state)); } catch { /* Funciona em memória. */ }
   subscribers.forEach(fn => fn());
@@ -43,44 +45,48 @@ function checkAssignment(patientId:string, doctorId?:string) {
 export const demoStore = {
   subscribe(fn:() => void) { subscribers.add(fn); return () => { subscribers.delete(fn); }; },
   getSnapshot:() => state,
-  selectPatient(id:string) { if (state.patients.some(p => p.id === id)) save({...state,selectedPatientId:id}); },
-  selectDoctor(id:string) { if (state.doctors.some(d => d.id === id)) save({...state,selectedDoctorId:id}); },
+  enterDemo() { remoteWriter=null;state={...read(),source:'demo',loading:false,error:'',sessionUid:undefined,sessionRole:undefined};subscribers.forEach(fn=>fn()); },
+  connectRemote(uid:string,role:'admin'|'doctor'|'patient',writer:(previous:DemoData,next:DemoData)=>Promise<void>) { remoteWriter=writer;state={patients:[],doctors:[],requests:[],appointments:[],selectedPatientId:uid,selectedDoctorId:uid,source:'firebase',loading:true,error:'',sessionUid:uid,sessionRole:role};subscribers.forEach(fn=>fn()); },
+  receiveRemote(data:Pick<DemoData,'patients'|'doctors'|'requests'|'appointments'>) { state={...state,...data,loading:false,error:''};subscribers.forEach(fn=>fn()); },
+  remoteError(message:string) {state={...state,loading:false,error:message};subscribers.forEach(fn=>fn());},
+  selectPatient(id:string) { if (state.patients.some(p => p.id === id)) { if(state.source==='firebase'){state={...state,selectedPatientId:id};subscribers.forEach(fn=>fn());}else save({...state,selectedPatientId:id}); } },
+  selectDoctor(id:string) { if (state.doctors.some(d => d.id === id)) { if(state.source==='firebase'){state={...state,selectedDoctorId:id};subscribers.forEach(fn=>fn());}else save({...state,selectedDoctorId:id}); } },
   saveDoctor(doctor:Doctor) {
     if (!doctor.name.trim()) throw new Error('Informe o nome do médico.');
-    save({...state,doctors:state.doctors.some(d => d.id === doctor.id) ? state.doctors.map(d => d.id === doctor.id ? doctor : d) : [...state.doctors,doctor]});
+    return save({...state,doctors:state.doctors.some(d => d.id === doctor.id) ? state.doctors.map(d => d.id === doctor.id ? doctor : d) : [...state.doctors,doctor]});
   },
   removeDoctor(id:string) {
     if (state.patients.some(p => p.doctorId === id) || state.requests.some(r => r.doctorId === id) || state.appointments.some(a => a.doctorId === id)) throw new Error('Reatribua pacientes, solicitações e consultas antes de excluir este médico.');
-    save({...state,doctors:state.doctors.filter(d => d.id !== id)});
+    return save({...state,doctors:state.doctors.filter(d => d.id !== id)});
   },
   savePatient(patient:Patient) {
     if (!patient.name.trim()) throw new Error('Informe o nome da paciente.');
     if (patient.doctorId && !state.doctors.some(d => d.id === patient.doctorId)) throw new Error('Médico não encontrado.');
     if (patient.week < 0 || patient.week > 45) throw new Error('Informe uma semana entre 0 e 45.');
-    save({...state,patients:state.patients.some(p => p.id === patient.id) ? state.patients.map(p => p.id === patient.id ? patient : p) : [...state.patients,patient]});
+    return save({...state,patients:state.patients.some(p => p.id === patient.id) ? state.patients.map(p => p.id === patient.id ? patient : p) : [...state.patients,patient]});
   },
   removePatient(id:string) {
-    save({...state,patients:state.patients.filter(p => p.id !== id),requests:state.requests.filter(r => r.patientId !== id),appointments:state.appointments.filter(a => a.patientId !== id)});
+    return save({...state,patients:state.patients.filter(p => p.id !== id),requests:state.requests.filter(r => r.patientId !== id),appointments:state.appointments.filter(a => a.patientId !== id)});
   },
   saveRequest(request:CareRequest) {
     checkAssignment(request.patientId,request.doctorId);
     if (!request.title.trim() || !request.description.trim()) throw new Error('Informe assunto e descrição.');
-    save({...state,requests:state.requests.some(r => r.id === request.id) ? state.requests.map(r => r.id === request.id ? request : r) : [request,...state.requests]});
+    return save({...state,requests:state.requests.some(r => r.id === request.id) ? state.requests.map(r => r.id === request.id ? request : r) : [request,...state.requests]});
   },
-  removeRequest(id:string) { save({...state,requests:state.requests.filter(r => r.id !== id)}); },
-  updateRequest(id:string,status:RequestStatus) { save({...state,requests:state.requests.map(r => r.id === id ? {...r,status} : r)}); },
+  removeRequest(id:string) { return save({...state,requests:state.requests.filter(r => r.id !== id)}); },
+  updateRequest(id:string,status:RequestStatus) { return save({...state,requests:state.requests.map(r => r.id === id ? {...r,status} : r)}); },
   addRequest(patientId:string,title:string,description:string) {
     const patient = state.patients.find(p => p.id === patientId);
-    this.saveRequest({id:createDemoId(),patientId,doctorId:patient?.doctorId ?? '',title,description,date:new Date().toISOString().slice(0,10),priority:'Normal',status:'Pendente'});
+    return this.saveRequest({id:createDemoId(),patientId,doctorId:patient?.doctorId ?? '',title,description,date:new Date().toISOString().slice(0,10),priority:'Normal',status:'Pendente'});
   },
   saveAppointment(appointment:Appointment) {
     checkAssignment(appointment.patientId,appointment.doctorId);
     if (!appointment.type.trim() || !appointment.date || !appointment.time) throw new Error('Preencha tipo, data e horário.');
-    save({...state,appointments:state.appointments.some(a => a.id === appointment.id) ? state.appointments.map(a => a.id === appointment.id ? appointment : a) : [...state.appointments,appointment]});
+    return save({...state,appointments:state.appointments.some(a => a.id === appointment.id) ? state.appointments.map(a => a.id === appointment.id ? appointment : a) : [...state.appointments,appointment]});
   },
-  removeAppointment(id:string) { save({...state,appointments:state.appointments.filter(a => a.id !== id)}); },
-  updateNotes(id:string,notes:string) { save({...state,patients:state.patients.map(p => p.id === id ? {...p,notes} : p)}); },
-  reset() { save(defaults()); }
+  removeAppointment(id:string) { return save({...state,appointments:state.appointments.filter(a => a.id !== id)}); },
+  updateNotes(id:string,notes:string) { return save({...state,patients:state.patients.map(p => p.id === id ? {...p,notes} : p)}); },
+  reset() { remoteWriter=null;save(defaults()); }
 };
 export function useDemoData() { return useSyncExternalStore(demoStore.subscribe,demoStore.getSnapshot,demoStore.getSnapshot); }
 export function usePatientData() {

@@ -16,3 +16,5 @@ Thumbs.db
 .idea/
 *.tsbuildinfo
 /maternal-care-mvp.zip
+/test-results/
+/playwright-report/

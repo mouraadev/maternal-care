@@ -1,0 +1,46 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function profile() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function active() { return signedIn() && profile().active == true; }
+    function admin() { return active() && profile().role == 'admin'; }
+    function doctor() { return active() && profile().role == 'doctor'; }
+    function patient() { return active() && profile().role == 'patient'; }
+    function responsible(data) { return doctor() && data.doctorId == request.auth.uid; }
+    function owns(data) { return patient() && data.patientId == request.auth.uid; }
+    function careTeam(data) { return doctor() && (data.doctorId == request.auth.uid || request.auth.uid in data.get('careTeamIds', [])); }
+    function statusValid(data) { return data.status in ['Pendente', 'Em andamento', 'Concluído']; }
+    match /users/{uid} {
+      allow get: if signedIn() && (request.auth.uid == uid || admin());
+      allow list: if admin();
+      allow create: if admin() && request.resource.data.role in ['doctor','patient'] && request.resource.data.active == true;
+      allow update: if admin() && resource.data.role in ['doctor','patient'] && request.resource.data.role == resource.data.role;
+      allow delete: if admin() && resource.data.role in ['doctor','patient'] && uid != request.auth.uid;
+    }
+    match /patients/{uid} {
+      allow read: if admin() || (active() && request.auth.uid == uid) || careTeam(resource.data);
+      allow create, delete: if admin();
+      allow update: if admin() || (careTeam(resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notes','week','dueDate','lastVisit','nextVisit','updatedAt']));
+    }
+    match /careRequests/{id} {
+      allow read: if admin() || responsible(resource.data) || owns(resource.data);
+      allow create: if (admin() || (patient() && request.resource.data.patientId == request.auth.uid
+        && request.resource.data.doctorId == get(/databases/$(database)/documents/patients/$(request.auth.uid)).data.doctorId
+        && request.resource.data.status == 'Pendente' && request.resource.data.priority == 'Normal'))
+        && statusValid(request.resource.data) && request.resource.data.title is string && request.resource.data.title.size() <= 200
+        && request.resource.data.description is string && request.resource.data.description.size() <= 2000;
+      allow update: if statusValid(request.resource.data) && (admin() || (responsible(resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt'])));
+      allow delete: if admin();
+    }
+    match /appointments/{id} {
+      allow read: if admin() || responsible(resource.data) || owns(resource.data);
+      allow create: if admin() && statusValid(request.resource.data);
+      allow update: if statusValid(request.resource.data) && (admin() || (responsible(resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt'])));
+      allow delete: if admin();
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}
