@@ -20,7 +20,11 @@ Na validação do merge, foi removido um import não utilizado no layout, atuali
 - Define tratamento de dados sensíveis, retenção mínima e auditoria antes de qualquer dado real.
 
 ## Integração de login
-O frontend **não contém formulário de login**. Depois que Felipe implementar autenticação, use um wrapper de rotas com checagem de sessão e perfil no servidor, substitua o botão temporário de troca de papel no layout e direcione para `/doctor/dashboard` ou `/patient/dashboard` conforme o perfil validado.
+O frontend contém formulário em `src/pages/auth/Login.tsx`, disponível em `/login` e como destino da raiz. Usa Firebase Email/Password e lê `users/{uid}`, exigindo `active: true` e perfil `admin`, `doctor` ou `patient` para redirecionar ao dashboard correspondente. Não há cadastro público nem fluxo de recuperação de senha. Sem configuração Firebase, a tela informa a indisponibilidade e permite explorar dados fictícios pelos links de demonstração, incluindo a administração.
+
+A gestão administrativa de demonstração está documentada em [ADMIN.md](ADMIN.md). Ela compartilha pacientes, profissionais, solicitações e consultas com as outras interfaces via armazenamento local. Os cadastros não criam contas Firebase e o acesso administrativo aos dados clínicos precisa de revisão explícita dos contratos de autorização antes da integração real.
+
+Ainda é necessário implementar um wrapper de rotas com sessão persistente, checagem confiável de perfil e regras no servidor, substituir o botão temporário de troca de papel e retirar os atalhos públicos de demonstração antes de usar dados reais. Os dados dos dashboards continuam fictícios mesmo após login; não representam o usuário autenticado.
 
 ## Modelo de dados e compatibilidade
 

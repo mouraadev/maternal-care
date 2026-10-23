@@ -1,20 +1,97 @@
 import {useSyncExternalStore} from 'react';
-import {initialRequests, patients} from '../data/seed';
-import type {CareRequest, Patient, RequestStatus} from '../types';
-type DemoData={requests:CareRequest[];patients:Patient[]};
-const key='maternal-care-demo-v1';
-const read=():DemoData=>{try{const s=localStorage.getItem(key);if(s){const x=JSON.parse(s) as DemoData;if(Array.isArray(x.requests)&&Array.isArray(x.patients))return x;}}catch{}return {requests:initialRequests,patients};};
-let state:DemoData={requests:initialRequests,patients};
-try{if(typeof window!=='undefined')state=read();}catch{}
-const subscribers=new Set<()=>void>();
-const notify=()=>subscribers.forEach(fn=>fn());
-function save(next:DemoData){state=next;try{localStorage.setItem(key,JSON.stringify(state));}catch{}notify();}
-export const demoStore={
- subscribe(fn:()=>void){subscribers.add(fn);return()=>subscribers.delete(fn);},
- getSnapshot:()=>state,
- updateRequest(id:string,status:RequestStatus){save({...state,requests:state.requests.map(r=>r.id===id?{...r,status}:r)});},
- addRequest(patientId:string,title:string,description:string){const r:CareRequest={id:`r-${Date.now()}`,patientId,title,description,date:new Date().toISOString().slice(0,10),priority:'Normal',status:'Pendente'};save({...state,requests:[r,...state.requests]});},
- updateNotes(id:string,notes:string){save({...state,patients:state.patients.map(p=>p.id===id?{...p,notes}:p)});},
- reset(){save({requests:initialRequests,patients});}
+import {initialRequests, patients, appointments} from '../data/seed';
+import type {Appointment, CareRequest, Doctor, Patient, RequestStatus} from '../types';
+import {createDemoId} from '../utils/id';
+
+export type DemoData = {requests:CareRequest[];patients:Patient[];doctors:Doctor[];appointments:Appointment[];selectedPatientId:string;selectedDoctorId:string};
+const key = 'maternal-care-demo-v1';
+function defaults(): DemoData {
+  return structuredClone({requests:initialRequests.map(r => ({...r,doctorId:'d1'})),patients,
+    appointments:appointments.map(a => ({...a,doctorId:'d1'})),
+    doctors:[{id:'d1',name:'Dr. Rafael Almeida',email:'rafael@example.com',specialty:'Obstetrícia',registration:'CRM DEMO-001'},
+      {id:'d2',name:'Dra. Helena Costa',email:'helena@example.com',specialty:'Ginecologia e obstetrícia',registration:'CRM DEMO-002'}],
+    selectedPatientId:'p1',selectedDoctorId:'d1'});
+}
+function read(): DemoData {
+  const initial = defaults();
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (Array.isArray(data.patients) && Array.isArray(data.requests)) {
+        const patientDoctor = (id:string) => data.patients.find((p:Patient) => p.id === id)?.doctorId ?? '';
+        return {...initial,...data,
+          doctors:Array.isArray(data.doctors) ? data.doctors : initial.doctors,
+          appointments:Array.isArray(data.appointments) ? data.appointments : initial.appointments.filter(a => data.patients.some((p:Patient) => p.id === a.patientId)),
+          requests:data.requests.map((r:CareRequest) => ({...r,doctorId:r.doctorId ?? patientDoctor(r.patientId)}))};
+      }
+    }
+  } catch { /* Armazenamento indisponível: manter demonstração em memória. */ }
+  return initial;
+}
+let state = read();
+const subscribers = new Set<() => void>();
+function save(next:DemoData) {
+  state = next;
+  try { localStorage.setItem(key,JSON.stringify(state)); } catch { /* Funciona em memória. */ }
+  subscribers.forEach(fn => fn());
+}
+function checkAssignment(patientId:string, doctorId?:string) {
+  if (!state.patients.some(p => p.id === patientId)) throw new Error('Paciente não encontrada.');
+  if (doctorId && !state.doctors.some(d => d.id === doctorId)) throw new Error('Médico não encontrado.');
+}
+export const demoStore = {
+  subscribe(fn:() => void) { subscribers.add(fn); return () => { subscribers.delete(fn); }; },
+  getSnapshot:() => state,
+  selectPatient(id:string) { if (state.patients.some(p => p.id === id)) save({...state,selectedPatientId:id}); },
+  selectDoctor(id:string) { if (state.doctors.some(d => d.id === id)) save({...state,selectedDoctorId:id}); },
+  saveDoctor(doctor:Doctor) {
+    if (!doctor.name.trim()) throw new Error('Informe o nome do médico.');
+    save({...state,doctors:state.doctors.some(d => d.id === doctor.id) ? state.doctors.map(d => d.id === doctor.id ? doctor : d) : [...state.doctors,doctor]});
+  },
+  removeDoctor(id:string) {
+    if (state.patients.some(p => p.doctorId === id) || state.requests.some(r => r.doctorId === id) || state.appointments.some(a => a.doctorId === id)) throw new Error('Reatribua pacientes, solicitações e consultas antes de excluir este médico.');
+    save({...state,doctors:state.doctors.filter(d => d.id !== id)});
+  },
+  savePatient(patient:Patient) {
+    if (!patient.name.trim()) throw new Error('Informe o nome da paciente.');
+    if (patient.doctorId && !state.doctors.some(d => d.id === patient.doctorId)) throw new Error('Médico não encontrado.');
+    if (patient.week < 0 || patient.week > 45) throw new Error('Informe uma semana entre 0 e 45.');
+    save({...state,patients:state.patients.some(p => p.id === patient.id) ? state.patients.map(p => p.id === patient.id ? patient : p) : [...state.patients,patient]});
+  },
+  removePatient(id:string) {
+    save({...state,patients:state.patients.filter(p => p.id !== id),requests:state.requests.filter(r => r.patientId !== id),appointments:state.appointments.filter(a => a.patientId !== id)});
+  },
+  saveRequest(request:CareRequest) {
+    checkAssignment(request.patientId,request.doctorId);
+    if (!request.title.trim() || !request.description.trim()) throw new Error('Informe assunto e descrição.');
+    save({...state,requests:state.requests.some(r => r.id === request.id) ? state.requests.map(r => r.id === request.id ? request : r) : [request,...state.requests]});
+  },
+  removeRequest(id:string) { save({...state,requests:state.requests.filter(r => r.id !== id)}); },
+  updateRequest(id:string,status:RequestStatus) { save({...state,requests:state.requests.map(r => r.id === id ? {...r,status} : r)}); },
+  addRequest(patientId:string,title:string,description:string) {
+    const patient = state.patients.find(p => p.id === patientId);
+    this.saveRequest({id:createDemoId(),patientId,doctorId:patient?.doctorId ?? '',title,description,date:new Date().toISOString().slice(0,10),priority:'Normal',status:'Pendente'});
+  },
+  saveAppointment(appointment:Appointment) {
+    checkAssignment(appointment.patientId,appointment.doctorId);
+    if (!appointment.type.trim() || !appointment.date || !appointment.time) throw new Error('Preencha tipo, data e horário.');
+    save({...state,appointments:state.appointments.some(a => a.id === appointment.id) ? state.appointments.map(a => a.id === appointment.id ? appointment : a) : [...state.appointments,appointment]});
+  },
+  removeAppointment(id:string) { save({...state,appointments:state.appointments.filter(a => a.id !== id)}); },
+  updateNotes(id:string,notes:string) { save({...state,patients:state.patients.map(p => p.id === id ? {...p,notes} : p)}); },
+  reset() { save(defaults()); }
 };
-export function useDemoData(){return useSyncExternalStore(demoStore.subscribe,demoStore.getSnapshot,demoStore.getSnapshot);}
+export function useDemoData() { return useSyncExternalStore(demoStore.subscribe,demoStore.getSnapshot,demoStore.getSnapshot); }
+export function usePatientData() {
+  const data = useDemoData();
+  const patient = data.patients.find(p => p.id === data.selectedPatientId) ?? data.patients[0];
+  return {...data,patients:patient ? [patient] : [],requests:data.requests.filter(r => r.patientId === patient?.id),appointments:data.appointments.filter(a => a.patientId === patient?.id)};
+}
+export function useDoctorData() {
+  const data = useDemoData();
+  const doctor = data.doctors.find(d => d.id === data.selectedDoctorId) ?? data.doctors[0];
+  const requests = data.requests.filter(r => r.doctorId === doctor?.id);
+  const appointments = data.appointments.filter(a => a.doctorId === doctor?.id);
+  return {...data,doctor,patients:data.patients.filter(p => p.doctorId === doctor?.id || requests.some(r=>r.patientId===p.id) || appointments.some(a=>a.patientId===p.id)),requests,appointments};
+}

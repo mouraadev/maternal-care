@@ -2,7 +2,7 @@
 
 Plataforma de acompanhamento gestacional com inteligência artificial para um hackathon da OpenAI.
 
-O repositório reúne a arquitetura inicial do Doul.IA e o frontend de demonstração importado de `maternal-care-mvp.zip`. As áreas de médico e paciente são navegáveis com dados fictícios e persistência local. O login permanece reservado ao Felipe; não há backend, autorização real ou IA conectada nesta versão.
+O repositório reúne a arquitetura inicial do Doul.IA e o frontend de demonstração importado de `maternal-care-mvp.zip`. As áreas de médico e paciente são navegáveis com dados fictícios e persistência local. A tela `/login` oferece acesso por Firebase Authentication quando configurado. Backend, regras de autorização e IA ainda dependem de implementação.
 
 ## Executar o frontend
 
@@ -13,9 +13,9 @@ npm ci
 npm run dev
 ```
 
-Abrir `http://localhost:5173`. Para validar: `npm run typecheck` e `npm run build`. Para visualizar o build: `npm run preview`. Ainda não há suíte de testes automatizados ou script de lint.
+Abrir `http://localhost:5173`. Para validar: `npm test`, `npm run typecheck` e `npm run build`. Para visualizar o build: `npm run preview`. Ainda não há script de lint.
 
-Rotas de demonstração: `/doctor/dashboard`, `/doctor/patients`, `/doctor/patients/:id`, `/doctor/requests`, `/patient/dashboard`, `/patient/pregnancy`, `/patient/appointments` e `/patient/assistant`. O botão de troca de perfil serve somente para demonstração; não autentica usuários. A área administrativa ainda não foi implementada.
+Rotas de demonstração: `/admin/dashboard`, `/admin/patients`, `/admin/doctors`, `/admin/requests`, `/admin/appointments`, `/doctor/dashboard`, `/doctor/patients`, `/doctor/patients/:id`, `/doctor/requests`, `/patient/dashboard`, `/patient/pregnancy`, `/patient/appointments` e `/patient/assistant`. Os atalhos de administração e seleção de cadastros servem somente para demonstração; não autenticam usuários.
 
 ## Stack planejada
 
@@ -54,10 +54,13 @@ As pastas vazias possuem `.gitkeep` para serem versionadas. O frontend entra por
 - [Responsabilidades de Ryan e Felipe](docs/RESPONSIBILITIES.md)
 - [Contratos iniciais de API](docs/API.md)
 - [Integração do MVP e diferenças em relação aos contratos](docs/INTEGRATION.md)
+- [Administração, atribuições e progresso dos atendimentos](docs/ADMIN.md)
 
 ## Próxima etapa
 
-Felipe implementará login, sessão, autorização, Firebase e Functions. Ryan integrará os adaptadores e as telas ao backend conforme os contratos. Nenhuma tela de login foi adicionada ou alterada neste merge.
+O formulário de login está em `src/pages/auth/Login.tsx`, com estilos responsivos próprios. A raiz `/` abre `/login`. O acesso por conta exige Email/Password habilitado no Firebase e documento `users/{uid}` com `active: true` e `role: admin`, `doctor` ou `patient`. Cada perfil é direcionado ao seu dashboard. Perfis ausentes ou inativos não são direcionados aos painéis, e a sessão recém-aberta é encerrada.
+
+Os atalhos de demonstração continuam públicos; esta tela não implementa guardas de rota nem autorização dos dados. Felipe completará sessão persistente, proteção de rotas, regras, provisionamento e Functions. Ryan integrará os adaptadores e as telas ao backend conforme os contratos. Recuperação de senha ainda deve ser solicitada ao administrador; não há cadastro público.
 
 Os arquivos `.env.example` são modelos sem credenciais. Para configurar o cliente Firebase, copiar para `.env.local` e preencher a configuração pública. `VITE_LIA_FUNCTION_URL` pertence ao adaptador HTTP do MVP; ele ainda difere do callable planejado, conforme `docs/INTEGRATION.md`. Nunca colocar chaves OpenAI no frontend. Nenhum recurso foi publicado ou provisionado.
 

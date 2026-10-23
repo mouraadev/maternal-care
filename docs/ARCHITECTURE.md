@@ -2,7 +2,9 @@
 
 ## Escopo desta entrega
 
-O esqueleto inicial recebeu o frontend de demonstração do arquivo `maternal-care-mvp.zip`. Há páginas de médico e paciente, componentes, dados fictícios, armazenamento local e configuração Vite/TypeScript. Não há login implementado, backend, regras implantáveis ou serviços provisionados. A pasta `src/pages/auth` permanece reservada ao Felipe. Scripts disponíveis: `dev`, `build`, `preview` e `typecheck`; lint e testes automatizados ainda precisam ser configurados.
+O esqueleto inicial recebeu o frontend de demonstração do arquivo `maternal-care-mvp.zip` e evoluiu com login e administração. Há páginas dos três perfis, componentes, dados fictícios, armazenamento local e configuração Vite/TypeScript. O login usa Firebase Authentication quando configurado; os dashboards ainda consomem o store local. Não há backend, guardas de autorização, regras implantáveis ou serviços provisionados. Scripts disponíveis: `dev`, `build`, `preview`, `typecheck` e `test`; lint ainda precisa ser configurado. Os testes cobrem gestão, migração de dados e renderização dos perfis.
+
+A administração permite CRUD local, vínculos e atribuições, progresso de atendimentos e visualização dos cadastros em ambas as interfaces. Ver [ADMIN.md](ADMIN.md). Essas permissões de demonstração não substituem a matriz de acesso do backend; revisar o acesso administrativo a dados clínicos na integração real.
 
 O MVP utiliza CSS próprio em `src/styles/global.css`; Tailwind continua como intenção da arquitetura original, sem configuração nesta versão. Os componentes importados ficam em `src/components/UI.tsx` e `src/components/Layout.tsx`. As pastas modulares do esqueleto permanecem disponíveis para evolução sem reorganização prematura.
 
